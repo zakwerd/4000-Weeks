@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "4000 Weeks",
+  "version": "1.0.0",
+  "description": "A minimalist Memento Mori countdown for your Chrome New Tab page.",
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "permissions": ["storage", "unlimitedStorage"],
+  "action": {
+    "default_popup": "index.html"
+  }
+}
