@@ -1,16 +1,20 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'motion/react';
-import { Calendar, Mail, ArrowRight, RefreshCcw, Info, User, X, Save, Sun, Moon, Download, Soup, Bed, Bath } from 'lucide-react';
-import { calculateWeeksLived, TOTAL_WEEKS, getWeekDate, getYearFromWeek, getCurrentFormattedDate } from './utils/dateUtils';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
+import { Calendar, ArrowRight, RefreshCcw, Info, User, X, Sun, Moon, Download, Soup, Bed, Bath } from 'lucide-react';
+import { addWeeks, parseISO } from 'date-fns';
+import { calculateWeeksLived, TOTAL_WEEKS, getWeekDate, getCurrentFormattedDate } from './utils/dateUtils';
 import { storageService, UserData } from './services/storageService';
 import { QUOTES } from './constants/quotes';
 
-const Digit: React.FC<{ value: number }> = ({ value }) => {
+const Digit: React.FC<{ value: number; index: number; isRolling: boolean }> = ({ value, index, isRolling }) => {
+  const settleDuration = isRolling ? 0.14 + index * 0.035 : 0.1;
+  const settleDelay = isRolling ? index * 0.02 : 0;
+
   return (
     <div className="relative w-[80px] h-[80px] overflow-hidden tabular-nums flex-shrink-0">
       <motion.div
         animate={{ y: -value * 80 }}
-        transition={{ duration: 0.1, ease: "easeOut" }}
+        transition={{ duration: settleDuration, delay: settleDelay, ease: [0.15, 0.85, 0.2, 1] }}
         className="flex flex-col items-center"
       >
         {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
@@ -23,26 +27,134 @@ const Digit: React.FC<{ value: number }> = ({ value }) => {
   );
 };
 
+const currentDotAnimate = {
+  scale: [1, 1.5, 1, 1.5, 1, 1.5, 1, 1.5, 1, 1.5, 1],
+  opacity: [1, 0.7, 1, 0.7, 1, 0.7, 1, 0.7, 1, 0.7, 1],
+};
+
+const currentDotTransition = {
+  duration: 5,
+  times: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+  repeat: Infinity as const,
+  ease: 'easeInOut' as const,
+};
+
+type WeekDotProps = {
+  index: number;
+  year: number;
+  isCurrent: boolean;
+  isLived: boolean;
+  hasJournal: boolean;
+  isSelected: boolean;
+  isStatWeek: boolean;
+  isHighlighted: boolean;
+  onHover: (week: number) => void;
+  onToggleYear: (year: number) => void;
+  onClickWeek: (week: number, isLived: boolean) => void;
+};
+
+type StatType = 'eat' | 'sleep' | 'hygiene';
+const DOT_CLICK_DELAY_MS = 190;
+
+const WeekDot = React.memo(function WeekDot({
+  index,
+  year,
+  isCurrent,
+  isLived,
+  hasJournal,
+  isSelected,
+  isStatWeek,
+  isHighlighted,
+  onHover,
+  onToggleYear,
+  onClickWeek,
+}: WeekDotProps) {
+  const className = `dot relative cursor-pointer hover:scale-125 hover:z-10 ${isCurrent ? 'dot-current' : isLived ? 'dot-filled' : 'dot-empty'
+    } ${hasJournal ? 'dot-has-journal' : ''} ${isSelected ? 'ring-1 ring-white ring-offset-1 ring-offset-black' : ''
+    } ${isStatWeek ? 'dot-stat' : ''} ${isHighlighted ? 'dot-highlighted' : ''}`;
+
+  if (!isCurrent) {
+    return (
+      <div
+        onMouseEnter={() => onHover(index)}
+        onDoubleClick={() => onToggleYear(year)}
+        onClick={() => onClickWeek(index, isLived)}
+        className={className}
+      />
+    );
+  }
+
+  return (
+    <motion.div
+      onMouseEnter={() => onHover(index)}
+      onDoubleClick={() => onToggleYear(year)}
+      onClick={() => onClickWeek(index, isLived)}
+      animate={currentDotAnimate}
+      transition={currentDotTransition}
+      className={className}
+    />
+  );
+});
+
 function AnimatedCounter({ target }: { target: number }) {
-  const count = useMotionValue(4000);
-  const [displayValue, setDisplayValue] = useState(4000);
-
-  useEffect(() => {
-    const controls = animate(count, target, {
-      duration: 3,
-      ease: [0.76, 0, 0.24, 1],
-      onUpdate: (latest) => setDisplayValue(Math.round(latest)),
-    });
-    return () => controls.stop();
-  }, [target, count]);
-
-  const digits = displayValue.toString().padStart(4, '0').split('').map(Number);
+  const digits = target.toString().padStart(4, "0").split("").map(Number);
 
   return (
     <div className="flex items-center justify-center h-24 gap-6">
       {digits.map((digit, i) => (
-        <Digit key={i} value={digit} />
+        <MechanicalDigit
+          key={i}
+          finalDigit={digit}
+          index={i}
+        />
       ))}
+    </div>
+  );
+}
+
+function MechanicalDigit({
+  finalDigit,
+  index,
+}: {
+  finalDigit: number;
+  index: number;
+}) {
+  const digitHeight = 64;
+
+  // Repeat digits multiple times so the scroll feels real.
+  const strip = [
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+  ];
+
+  // Start higher up so the digit visibly rolls.
+  const startIndex = 20 - index * 2;
+  const finalIndex = 20 + finalDigit;
+
+  const y = useMotionValue(-startIndex * digitHeight);
+
+  useEffect(() => {
+    const controls = animate(y, -finalIndex * digitHeight, {
+      duration: 1.4 + index * 0.25,
+      ease: [0.12, 0.9, 0.18, 1],
+    });
+
+    return () => controls.stop();
+  }, [finalIndex, digitHeight, index, y]);
+
+  return (
+    <div className="relative h-16 w-10 overflow-hidden">
+      <motion.div style={{ y }} className="absolute left-0 top-0 w-full">
+        {strip.map((n, i) => (
+          <div
+            key={i}
+            className="h-16 flex items-center justify-center text-5xl font-light"
+          >
+            {n}
+          </div>
+        ))}
+      </motion.div>
     </div>
   );
 }
@@ -58,8 +170,10 @@ export default function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [unlivedFeedback, setUnlivedFeedback] = useState<number | null>(null);
   const [highlightedYear, setHighlightedYear] = useState<number | null>(null);
-  const [activeStat, setActiveStat] = useState<'eat' | 'sleep' | 'hygiene' | null>(null);
+  const [activeStats, setActiveStats] = useState<Set<StatType>>(() => new Set());
   const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoveredWeekRef = useRef<number | null>(null);
+  const journalPanelRef = useRef<HTMLDivElement | null>(null);
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
 
@@ -68,27 +182,161 @@ export default function App() {
     return calculateWeeksLived(userData.birthday);
   }, [userData?.birthday]);
 
+  const weekIndexes = useMemo(() => {
+    return Array.from({ length: TOTAL_WEEKS }, (_, i) => i);
+  }, []);
+
+  const weekYears = useMemo(() => {
+    if (!userData?.birthday) return [] as number[];
+    const birthDate = parseISO(userData.birthday);
+    return weekIndexes.map((weekIndex) => addWeeks(birthDate, weekIndex).getFullYear());
+  }, [userData?.birthday, weekIndexes]);
+
   const highlightedRange = useMemo(() => {
-    if (highlightedYear === null || !userData?.birthday) return null;
-    
+    if (highlightedYear === null || weekYears.length === 0) return null;
+
     let start = -1;
     let end = -1;
-    
-    for (let i = 0; i < TOTAL_WEEKS; i++) {
-      if (getYearFromWeek(userData.birthday, i) === highlightedYear) {
+
+    for (let i = 0; i < weekYears.length; i++) {
+      if (weekYears[i] === highlightedYear) {
         if (start === -1) start = i;
         end = i;
       }
     }
-    
+
     if (end > lived) {
       const shift = end - lived;
       start = Math.max(0, start - shift);
       end = lived;
     }
-    
+
     return { start, end };
-  }, [highlightedYear, userData?.birthday, lived]);
+  }, [highlightedYear, lived, weekYears]);
+
+  const remainingWeeks = useMemo(() => {
+    return Math.max(0, TOTAL_WEEKS - lived);
+  }, [lived]);
+
+  const completionPercent = useMemo(() => {
+    return ((lived / TOTAL_WEEKS) * 100).toFixed(1);
+  }, [lived]);
+
+  const statWeeks = useMemo(() => {
+    return {
+      sleep: Math.round(lived * 0.333),
+      eat: Math.round(lived * 0.0625),
+      hygiene: Math.round(lived * 0.03125),
+    };
+  }, [lived]);
+
+  const combinedStatWeeks = useMemo(() => {
+    let total = 0;
+    activeStats.forEach((stat) => {
+      total += statWeeks[stat];
+    });
+    return Math.min(lived, total);
+  }, [activeStats, lived, statWeeks]);
+
+  const isStatActive = useCallback((stat: StatType) => activeStats.has(stat), [activeStats]);
+
+  const handleStatClick = useCallback((stat: StatType) => {
+    setActiveStats((prev) => {
+      const next = new Set(prev);
+      if (next.has(stat)) {
+        next.delete(stat);
+      } else {
+        next.add(stat);
+      }
+      return next;
+    });
+  }, []);
+
+  const updateHoveredWeek = useCallback((week: number | null) => {
+    if (hoveredWeekRef.current === week) return;
+    hoveredWeekRef.current = week;
+    setHoveredWeek(week);
+  }, []);
+
+  const handleWeekHover = useCallback((week: number) => {
+    updateHoveredWeek(week);
+  }, [updateHoveredWeek]);
+
+  const handleGridMouseLeave = useCallback(() => {
+    updateHoveredWeek(null);
+  }, [updateHoveredWeek]);
+
+  const handleWeekToggleYear = useCallback((year: number) => {
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+    }
+    setHighlightedYear((prev) => (prev === year ? null : year));
+  }, []);
+
+  const handleWeekClick = useCallback((week: number, isLivedWeek: boolean) => {
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+    }
+    clickTimeoutRef.current = setTimeout(() => {
+      if (isLivedWeek) {
+        setHighlightedYear(null);
+        setSelectedWeek(week);
+      } else {
+        setUnlivedFeedback(week + 1);
+      }
+      clickTimeoutRef.current = null;
+    }, DOT_CLICK_DELAY_MS);
+  }, []);
+
+  const weekGrid = useMemo(() => {
+    if (!userData) return null;
+
+    return (
+      <div
+        className="grid-container p-4 bg-[var(--card-bg)] rounded-2xl border border-[var(--border)] shadow-2xl"
+        onMouseLeave={handleGridMouseLeave}
+      >
+        {weekIndexes.map((i) => {
+          const isCurrent = i === lived;
+          const isLived = i < lived;
+          const hasJournal = userData.journals?.[i];
+          const year = weekYears[i] ?? 0;
+          const isHighlighted = highlightedRange && i >= highlightedRange.start && i <= highlightedRange.end;
+          const isStatWeek = i < combinedStatWeeks;
+
+          return (
+            <WeekDot
+              key={i}
+              index={i}
+              year={year}
+              isCurrent={isCurrent}
+              isLived={isLived}
+              hasJournal={Boolean(hasJournal)}
+              isSelected={selectedWeek === i}
+              isStatWeek={Boolean(isStatWeek)}
+              isHighlighted={Boolean(isHighlighted)}
+              onHover={handleWeekHover}
+              onToggleYear={handleWeekToggleYear}
+              onClickWeek={handleWeekClick}
+            />
+          );
+        })}
+      </div>
+    );
+  }, [
+    combinedStatWeeks,
+    handleGridMouseLeave,
+    handleWeekClick,
+    handleWeekHover,
+    handleWeekToggleYear,
+    highlightedRange,
+    lived,
+    selectedWeek,
+    userData,
+    weekIndexes,
+    weekYears,
+  ]);
 
   const dailyQuote = useMemo(() => {
     const today = new Date();
@@ -102,13 +350,13 @@ export default function App() {
       if (data) {
         setUserData(data);
       }
-      
+
       // Load theme from localStorage (simple preference)
       const savedTheme = localStorage.getItem('4000weeks_theme') as 'dark' | 'light';
       if (savedTheme) {
         setTheme(savedTheme);
       }
-      
+
       setIsLoaded(true);
     };
     loadData();
@@ -149,14 +397,14 @@ export default function App() {
 
   const saveJournal = async (index: number, value: string) => {
     if (selectedWeek === null || !userData) return;
-    
+
     const newEntries = [...journalEntries];
     newEntries[index] = value;
     setJournalEntries(newEntries);
 
     const newJournals = { ...userData.journals, [selectedWeek]: newEntries };
     const newData = { ...userData, journals: newJournals };
-    
+
     await storageService.saveUserData(newData);
     setUserData(newData);
   };
@@ -219,10 +467,27 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (selectedWeek === null) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!journalPanelRef.current || !target) return;
+      if (!journalPanelRef.current.contains(target)) {
+        setSelectedWeek(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+    };
+  }, [selectedWeek]);
+
   if (!isLoaded) return null;
 
   return (
-    <div 
+    <div
       onMouseMove={handleMouseMove}
       className="min-h-screen bg-[var(--bg)] text-[var(--ink)] flex flex-col items-center justify-center p-4 md:p-8 transition-colors duration-300"
     >
@@ -286,33 +551,33 @@ export default function App() {
           >
             <div className="w-full flex flex-col items-center gap-2 relative">
               <div className="text-center">
-                <AnimatedCounter target={TOTAL_WEEKS - calculateWeeksLived(userData.birthday)} />
+                <AnimatedCounter target={remainingWeeks} />
                 <div className="flex flex-col items-center gap-1.5">
                   <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-500">
-                    {((calculateWeeksLived(userData.birthday) / TOTAL_WEEKS) * 100).toFixed(1)}% complete
+                    {completionPercent}% complete
                   </p>
                   <p className="text-[10px] uppercase tracking-[0.4em] text-zinc-400 font-bold">
                     WEEK {lived + 1} — {getCurrentFormattedDate()}
                   </p>
-                  
+
                   <div className="flex gap-6 mt-4">
-                    <button 
-                      onClick={() => setActiveStat(activeStat === 'eat' ? null : 'eat')}
-                      className={`transition-all duration-300 ${activeStat === 'eat' ? 'text-white scale-125' : activeStat ? 'text-zinc-800 opacity-40' : 'text-zinc-400 hover:text-zinc-200'}`}
+                    <button
+                      onClick={() => handleStatClick('eat')}
+                      className={`transition-all duration-300 ${isStatActive('eat') ? 'text-white scale-125' : activeStats.size > 0 ? 'text-zinc-800 opacity-40' : 'text-zinc-400 hover:text-zinc-200'}`}
                       title="Time spent eating so far (~6.3%)"
                     >
                       <Soup className="w-5 h-5" />
                     </button>
-                    <button 
-                      onClick={() => setActiveStat(activeStat === 'hygiene' ? null : 'hygiene')}
-                      className={`transition-all duration-300 ${activeStat === 'hygiene' ? 'text-white scale-125' : activeStat ? 'text-zinc-800 opacity-40' : 'text-zinc-400 hover:text-zinc-200'}`}
+                    <button
+                      onClick={() => handleStatClick('hygiene')}
+                      className={`transition-all duration-300 ${isStatActive('hygiene') ? 'text-white scale-125' : activeStats.size > 0 ? 'text-zinc-800 opacity-40' : 'text-zinc-400 hover:text-zinc-200'}`}
                       title="Time spent on hygiene so far (~3.1%)"
                     >
                       <Bath className="w-5 h-5" />
                     </button>
-                    <button 
-                      onClick={() => setActiveStat(activeStat === 'sleep' ? null : 'sleep')}
-                      className={`transition-all duration-300 ${activeStat === 'sleep' ? 'text-white scale-125' : activeStat ? 'text-zinc-800 opacity-40' : 'text-zinc-400 hover:text-zinc-200'}`}
+                    <button
+                      onClick={() => handleStatClick('sleep')}
+                      className={`transition-all duration-300 ${isStatActive('sleep') ? 'text-white scale-125' : activeStats.size > 0 ? 'text-zinc-800 opacity-40' : 'text-zinc-400 hover:text-zinc-200'}`}
                       title="Time spent sleeping so far (~33.3%)"
                     >
                       <Bed className="w-5 h-5" />
@@ -322,7 +587,7 @@ export default function App() {
                   <div className="h-4 mt-2">
                     <AnimatePresence mode="wait">
                       {hoveredWeek !== null && (
-                        <motion.p 
+                        <motion.p
                           key="hover-date"
                           initial={{ opacity: 0, y: 5 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -336,36 +601,36 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="absolute right-0 top-0 flex gap-2">
-                <button 
+                <button
                   onClick={downloadJournal}
                   className="p-2 text-zinc-700 hover:text-white transition-colors"
                   title="Download Journal"
                 >
                   <Download className="w-3 h-3" />
                 </button>
-                <button 
+                <button
                   onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
                   className="p-2 text-zinc-700 hover:text-white transition-colors"
                   title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
                 >
                   {theme === 'dark' ? <Sun className="w-3 h-3" /> : <Moon className="w-3 h-3" />}
                 </button>
-                <button 
+                <button
                   onClick={() => setIsEditing(true)}
                   className="p-2 text-zinc-700 hover:text-white transition-colors"
                   title="Account Settings"
                 >
                   <User className="w-3 h-3" />
                 </button>
-                <button 
+                <button
                   onClick={() => setShowInfo(!showInfo)}
                   className="p-2 text-zinc-700 hover:text-white transition-colors"
                 >
                   <Info className="w-3 h-3" />
                 </button>
-                <button 
+                <button
                   onClick={resetData}
                   className="p-2 text-zinc-700 hover:text-white transition-colors"
                 >
@@ -375,7 +640,7 @@ export default function App() {
             </div>            <div className="relative flex flex-col items-center">
               <AnimatePresence mode="wait">
                 {showInfo ? (
-                  <motion.div 
+                  <motion.div
                     key="info-text"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -383,7 +648,7 @@ export default function App() {
                     className="absolute -top-14 left-1/2 -translate-x-1/2 w-full max-w-md text-center text-zinc-500 text-[10px] leading-relaxed space-y-1 pointer-events-none"
                   >
                     <p className="italic">
-                      "The average human lifespan is absurdly, insultingly brief. 
+                      "The average human lifespan is absurdly, insultingly brief.
                       If you live to be eighty, you have just over four thousand weeks."
                     </p>
                     <p className="uppercase tracking-widest text-[8px] font-bold">
@@ -391,7 +656,7 @@ export default function App() {
                     </p>
                   </motion.div>
                 ) : (
-                  <motion.div 
+                  <motion.div
                     key="daily-quote"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -408,76 +673,7 @@ export default function App() {
                 )}
               </AnimatePresence>
 
-              <div className="grid-container p-4 bg-[var(--card-bg)] rounded-2xl border border-[var(--border)] shadow-2xl">
-                {Array.from({ length: TOTAL_WEEKS }).map((_, i) => {
-                  const isCurrent = i === lived;
-                  const isLived = i < lived;
-                  const hasJournal = userData.journals?.[i];
-                  const year = getYearFromWeek(userData.birthday, i);
-                  const isHighlighted = highlightedRange && i >= highlightedRange.start && i <= highlightedRange.end;
-                  
-                  const statWeeks = {
-                    sleep: Math.round(lived * 0.333),
-                    eat: Math.round(lived * 0.0625),
-                    hygiene: Math.round(lived * 0.03125)
-                  };
-                  const isStatWeek = activeStat && i < statWeeks[activeStat];
-
-                  return (
-                    <motion.div
-                      key={i}
-                      onMouseEnter={() => {
-                        setHoveredWeek(i);
-                        if (selectedWeek !== null && isLived) {
-                          setSelectedWeek(i);
-                        }
-                      }}
-                      onMouseLeave={() => setHoveredWeek(null)}
-                      onDoubleClick={() => {
-                        if (clickTimeoutRef.current) {
-                          clearTimeout(clickTimeoutRef.current);
-                          clickTimeoutRef.current = null;
-                        }
-                        if (highlightedYear === year) {
-                          setHighlightedYear(null);
-                        } else {
-                          setHighlightedYear(year);
-                        }
-                      }}
-                      onClick={() => {
-                        if (clickTimeoutRef.current) {
-                          clearTimeout(clickTimeoutRef.current);
-                        }
-                        clickTimeoutRef.current = setTimeout(() => {
-                          if (isLived) {
-                            setSelectedWeek(i);
-                          } else {
-                            setUnlivedFeedback(i + 1);
-                          }
-                          clickTimeoutRef.current = null;
-                        }, 250);
-                      }}
-                      animate={isCurrent ? {
-                        scale: [1, 1.5, 1, 1.5, 1, 1.5, 1, 1.5, 1, 1.5, 1],
-                        opacity: [1, 0.7, 1, 0.7, 1, 0.7, 1, 0.7, 1, 0.7, 1]
-                      } : {}}
-                      transition={isCurrent ? {
-                        duration: 5,
-                        times: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      } : {}}
-                      className={`dot cursor-pointer ${
-                        isCurrent ? 'dot-current' : isLived ? 'dot-filled' : 'dot-empty'
-                      } ${hoveredWeek === i ? 'scale-150 z-10' : ''} ${
-                        hasJournal ? 'dot-has-journal' : ''
-                      } ${selectedWeek === i ? 'ring-1 ring-white ring-offset-1 ring-offset-black' : ''} ${
-                        isStatWeek ? 'dot-stat' : ''
-                      } ${isHighlighted ? 'dot-highlighted' : ''}`}
-                    />
-                  );
-                })}
-              </div>
+              {weekGrid}
             </div>
           </motion.div>
         )}
@@ -486,6 +682,7 @@ export default function App() {
         {selectedWeek !== null && (
           <>
             <motion.div
+              ref={journalPanelRef}
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
@@ -501,7 +698,7 @@ export default function App() {
                     Week {selectedWeek + 1}
                   </p>
                 </div>
-                <button 
+                <button
                   onClick={() => setSelectedWeek(null)}
                   className="p-2 text-zinc-500 hover:text-[var(--ink)] transition-colors"
                 >
@@ -530,7 +727,7 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              
+
               <div className="p-6 border-t border-[var(--border)] bg-[var(--card-bg)]">
                 <p className="text-[9px] text-center text-zinc-600 uppercase tracking-widest">
                   Changes are saved automatically
