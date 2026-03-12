@@ -1,0 +1,243 @@
+:root {
+  --bg: #131313;
+  --ink: #f0f0f0;
+  --accent: #d8d8d8;
+  --dot-empty: #272727;
+  --dot-filled: #565656;
+  --dot-highlight: #b3b3b3;
+  --dot-stat: #8a8a8a;
+  --card-bg: rgba(25, 25, 25, 0.68);
+  --border: rgba(255, 255, 255, 0.09);
+  --input-bg: rgba(17, 17, 17, 0.62);
+  --input-border: rgba(255, 255, 255, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: "IBM Plex Mono", "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  background:
+    radial-gradient(1200px at 20% -10%, #242424 0%, transparent 55%),
+    radial-gradient(900px at 100% 0%, #1d1d1d 0%, transparent 50%),
+    linear-gradient(180deg, #161616 0%, #121212 100%);
+  min-height: 100vh;
+}
+
+.page-shell {
+  min-height: 100vh;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+.header-block {
+  width: min(1000px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+.counter-row {
+  display: flex;
+  align-items: end;
+  gap: 16px;
+  min-height: 112px;
+}
+
+.counter-digits {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.digit {
+  width: 48px;
+  text-align: center;
+  font-size: 72px;
+  line-height: 72px;
+  font-weight: 300;
+  font-style: italic;
+}
+
+.week-fraction {
+  font-size: 20px;
+  line-height: 1;
+  opacity: 0.45;
+  padding-bottom: 8px;
+}
+
+.subheader-block {
+  text-align: center;
+}
+
+.progress-label,
+.week-label {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.week-label {
+  margin-top: 6px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.stat-icons {
+  display: flex;
+  gap: 24px;
+  margin-top: 10px;
+}
+
+.icon-btn {
+  border: 0;
+  background: transparent;
+  color: #9ca3af;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+}
+
+.icon-btn.active {
+  color: var(--ink);
+  transform: scale(1.08);
+}
+
+.icon-btn.muted {
+  color: #7a7a7a;
+  opacity: 0.72;
+}
+
+.quote-block {
+  text-align: center;
+  max-width: 700px;
+}
+
+.quote-text {
+  margin: 0;
+  font-style: italic;
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+.quote-author {
+  margin: 8px 0 0;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.grid-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(100, 1fr);
+  gap: 3px;
+}
+
+.dot-square {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.dot-empty {
+  background: var(--dot-empty);
+}
+
+.dot-filled {
+  background: var(--dot-filled);
+}
+
+.dot-current {
+  background: var(--accent);
+}
+
+.dot-highlighted {
+  background: var(--dot-highlight);
+}
+
+.dot-stat {
+  background: var(--dot-stat);
+  opacity: 0.6;
+}
+
+.journal-panel {
+  width: min(360px, 100%);
+  border-left: 1px solid var(--border);
+  background: #111111;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.panel-header,
+.panel-footer {
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 300;
+}
+
+.panel-header p {
+  margin: 6px 0 0;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+
+.panel-body {
+  padding: 20px;
+  display: grid;
+  gap: 18px;
+}
+
+.field-group label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  opacity: 0.7;
+}
+
+.textarea-shell {
+  min-height: 110px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.panel-footer {
+  border-top: 1px solid var(--border);
+  border-bottom: 0;
+  text-align: center;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  opacity: 0.65;
+}

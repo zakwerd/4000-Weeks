@@ -29,10 +29,6 @@ export const QUOTES: Quote[] = [
     author: "Latin Proverb"
   },
   {
-    text: "The trouble is, you think you have time.",
-    author: "Jack Kornfield"
-  },
-  {
     text: "Loneliness is the poverty of self; solitude is the richness of self.",
     author: "May Sarton"
   },
@@ -131,5 +127,77 @@ export const QUOTES: Quote[] = [
   {
     text: "Life is a play that does not take place in the future or the past. Life is only now.",
     author: "Alan Watts"
+  },
+  {
+    text: "Nobody realizes that some people expend tremendous energy merely to be normal.",
+    author: "Albert Camus"
+  },
+  {
+    text: "If people bring so much courage to this world the world has to kill them to break them, so of course it kills them.",
+    author: "Ernest Hemingway, A Farewell to Arms"
+  },
+  {
+    text: "Life is only precious because it ends, kid.",
+    author: "Rick Riordan, The Son of Neptune"
+  },
+  {
+    text: "There is not love of life without despair about life.",
+    author: "Albert Camus"
+  },
+  {
+    text: "Your days are numbered. Use them to throw open the windows of your soul to the sun. If you do not, the sun will soon set, and you with it.",
+    author: "Marcus Aurelius, The Emperor's Handbook"
+  },
+  {
+    text: "I balanced all, brought all to mind, the years to come seemed waste of breath, a waste of breath the years behind, in balance with this life, this death.",
+    author: "William Butler Yeats"
+  },
+  {
+    text: "There is another world, but it is in this one.",
+    author: "William Butler Yeats"
+  },
+  {
+    text: "The best lack all conviction, while the worst are full of passionate intensity.",
+    author: "William Butler Yeats"
+  },
+  {
+    text: "Do not wait to strike till the iron is hot; but make it hot by striking.",
+    author: "William Butler Yeats"
+  },
+  {
+    text: "We are such stuff as dreams are made on, and our little life is rounded with a sleep.",
+    author: "William Shakespeare, The Tempest"
+  },
+  {
+    text: "To die will be an awfully big adventure.",
+    author: "J.M. Barrie, Peter Pan"
+  },
+  {
+    text: "How long are you going to wait before you demand the best for yourself?",
+    author: "Epictetus"
+  },
+  {
+    text: "The whole future lies in uncertainty: live immediately.",
+    author: "Seneca"
+  },
+  {
+    text: "Men fear death, as children fear to go in the dark.",
+    author: "Francis Bacon"
+  },
+  {
+    text: "Life is half spent before we know what it is.",
+    author: "George Herbert"
+  },
+  {
+    text: "We live in deeds, not years; in thoughts, not breaths.",
+    author: "Philip James Bailey, Festus"
+  },
+  {
+    text: "The sun is but a morning star.",
+    author: "Henry David Thoreau, Walden"
+  },
+  {
+    text: "Every man has his secret sorrows which the world knows not.",
+    author: "Henry Wadsworth Longfellow"
   }
 ];

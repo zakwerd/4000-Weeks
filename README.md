@@ -1,20 +1,34 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 4000 Chrome Extension
 
-# Run and deploy your AI Studio app
+This project is a Chrome Extension (Manifest V3) that overrides the New Tab page.
 
-This contains everything you need to run your app locally.
+## Local Development
 
-View your app in AI Studio: https://ai.studio/apps/bf80e83a-7e81-4913-8a53-c0935f60bc76
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
+Prerequisite: Node.js
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Run local dev server:
    `npm run dev`
+
+## Build for Chrome
+
+1. Build production files:
+   `npm run build`
+2. Open `chrome://extensions`
+3. Enable **Developer mode**
+4. Click **Load unpacked**
+5. Select the `dist` folder:
+   `/Users/werd/Desktop/4000-weeks/dist`
+
+## Update Extension After Changes
+
+1. Rebuild:
+   `npm run build`
+2. In `chrome://extensions`, click **Reload** on the extension card
+
+## Key Extension Files
+
+- Manifest source: `public/manifest.json`
+- Packaged manifest: `dist/manifest.json`
+- Icons source: `public/icons/*`

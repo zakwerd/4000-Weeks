@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence, useMotionValue, animate } from 'motion/react';
-import { Calendar, ArrowRight, RefreshCcw, Info, User, X, Sun, Moon, Download, Soup, Bed, Bath } from 'lucide-react';
+import { Calendar, ArrowRight, Info, User, X, Sun, Moon, Download, Soup, Bed, Bath } from 'lucide-react';
 import { addWeeks, parseISO } from 'date-fns';
-import { calculateWeeksLived, TOTAL_WEEKS, getWeekDate, getCurrentFormattedDate } from './utils/dateUtils';
+import { calculateWeeksLived, TOTAL_WEEKS, getWeekDate, getWeekStartDate, getCurrentFormattedDate } from './utils/dateUtils';
 import { storageService, UserData } from './services/storageService';
 import { QUOTES } from './constants/quotes';
 
@@ -35,7 +35,7 @@ const currentDotAnimate = {
 const currentDotTransition = {
   duration: 5,
   times: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
-  repeat: Infinity as const,
+  repeat: Infinity,
   ease: 'easeInOut' as const,
 };
 
@@ -55,6 +55,7 @@ type WeekDotProps = {
 
 type StatType = 'eat' | 'sleep' | 'hygiene';
 const DOT_CLICK_DELAY_MS = 190;
+const WEEK_GRID_COLUMNS = 100;
 
 const WeekDot = React.memo(function WeekDot({
   index,
@@ -79,6 +80,10 @@ const WeekDot = React.memo(function WeekDot({
         onMouseEnter={() => onHover(index)}
         onDoubleClick={() => onToggleYear(year)}
         onClick={() => onClickWeek(index, isLived)}
+        role="button"
+        tabIndex={0}
+        aria-label={`Week ${index + 1}`}
+        data-testid={`week-dot-${index}`}
         className={className}
       />
     );
@@ -89,6 +94,10 @@ const WeekDot = React.memo(function WeekDot({
       onMouseEnter={() => onHover(index)}
       onDoubleClick={() => onToggleYear(year)}
       onClick={() => onClickWeek(index, isLived)}
+      role="button"
+      tabIndex={0}
+      aria-label={`Week ${index + 1}`}
+      data-testid={`week-dot-${index}`}
       animate={currentDotAnimate}
       transition={currentDotTransition}
       className={className}
@@ -100,26 +109,28 @@ function AnimatedCounter({ target }: { target: number }) {
   const digits = target.toString().padStart(4, "0").split("").map(Number);
 
   return (
-    <div className="flex items-center justify-center h-24 gap-6">
-      {digits.map((digit, i) => (
-        <MechanicalDigit
-          key={i}
-          finalDigit={digit}
-          index={i}
-        />
-      ))}
+    <div className="flex items-end justify-center h-28">
+      <div className="flex items-center gap-6">
+        {digits.map((digit, i) => (
+          <MechanicalDigit
+            key={i}
+            finalDigit={digit}
+            index={i}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
-function MechanicalDigit({
-  finalDigit,
-  index,
-}: {
+const MechanicalDigit: React.FC<{
   finalDigit: number;
   index: number;
+}> = function MechanicalDigit({
+  finalDigit,
+  index,
 }) {
-  const digitHeight = 64;
+  const digitHeight = 72;
 
   // Repeat digits multiple times so the scroll feels real.
   const strip = [
@@ -144,12 +155,12 @@ function MechanicalDigit({
   }, [finalIndex, digitHeight, index, y]);
 
   return (
-    <div className="relative h-16 w-10 overflow-hidden">
+    <div className="relative h-[72px] w-12 overflow-hidden">
       <motion.div style={{ y }} className="absolute left-0 top-0 w-full">
         {strip.map((n, i) => (
           <div
             key={i}
-            className="h-16 flex items-center justify-center text-5xl font-light"
+            className="h-[72px] flex items-center justify-center text-6xl font-light"
           >
             {n}
           </div>
@@ -157,7 +168,7 @@ function MechanicalDigit({
       </motion.div>
     </div>
   );
-}
+};
 
 export default function App() {
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -281,7 +292,7 @@ export default function App() {
     clickTimeoutRef.current = setTimeout(() => {
       if (isLivedWeek) {
         setHighlightedYear(null);
-        setSelectedWeek(week);
+        setSelectedWeek((prev) => (prev === week ? null : week));
       } else {
         setUnlivedFeedback(week + 1);
       }
@@ -294,12 +305,12 @@ export default function App() {
 
     return (
       <div
-        className="grid-container p-4 bg-[var(--card-bg)] rounded-2xl border border-[var(--border)] shadow-2xl"
+        className="grid-container p-4 bg-[var(--card-bg)] border-[0.5px] border-[var(--border)] shadow-2xl"
         onMouseLeave={handleGridMouseLeave}
       >
         {weekIndexes.map((i) => {
           const isCurrent = i === lived;
-          const isLived = i < lived;
+          const isLived = i <= lived;
           const hasJournal = userData.journals?.[i];
           const year = weekYears[i] ?? 0;
           const isHighlighted = highlightedRange && i >= highlightedRange.start && i <= highlightedRange.end;
@@ -409,13 +420,6 @@ export default function App() {
     setUserData(newData);
   };
 
-  const resetData = async () => {
-    if (confirm('Are you sure you want to reset your data?')) {
-      await storageService.removeUserData();
-      setUserData(null);
-    }
-  };
-
   const downloadJournal = () => {
     if (!userData || !userData.journals) return;
 
@@ -445,11 +449,11 @@ export default function App() {
       return;
     }
 
-    const blob = new Blob([content], { type: 'text/markdown' });
+    const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = '4000-weeks-journal.md';
+    a.download = '4000-weeks-journal.txt';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -484,12 +488,43 @@ export default function App() {
     };
   }, [selectedWeek]);
 
+  useEffect(() => {
+    if (selectedWeek === null) return;
+
+    const maxSelectableWeek = Math.max(0, lived);
+    const handleArrowNavigation = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || target.isContentEditable) return;
+      }
+
+      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+
+      event.preventDefault();
+      if (event.key === 'ArrowLeft') {
+        setSelectedWeek((prev) => (prev === null ? prev : Math.max(0, prev - 1)));
+      } else if (event.key === 'ArrowRight') {
+        setSelectedWeek((prev) => (prev === null ? prev : Math.min(maxSelectableWeek, prev + 1)));
+      } else if (event.key === 'ArrowUp') {
+        setSelectedWeek((prev) => (prev === null ? prev : Math.max(0, prev - WEEK_GRID_COLUMNS)));
+      } else if (event.key === 'ArrowDown') {
+        setSelectedWeek((prev) => (prev === null ? prev : Math.min(maxSelectableWeek, prev + WEEK_GRID_COLUMNS)));
+      }
+    };
+
+    window.addEventListener('keydown', handleArrowNavigation);
+    return () => {
+      window.removeEventListener('keydown', handleArrowNavigation);
+    };
+  }, [selectedWeek, lived]);
+
   if (!isLoaded) return null;
 
   return (
     <div
       onMouseMove={handleMouseMove}
-      className="min-h-screen bg-[var(--bg)] text-[var(--ink)] flex flex-col items-center justify-center p-4 md:p-8 transition-colors duration-300"
+      className="min-h-screen bg-[var(--bg)] text-[var(--ink)] flex flex-col items-center justify-center p-4 pb-28 md:p-8 md:pb-32 2xl:px-[2in] transition-colors duration-300"
     >
       <AnimatePresence mode="wait">
         {!userData || isEditing ? (
@@ -498,6 +533,7 @@ export default function App() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
+            data-testid="onboarding-region"
             className="w-full max-w-md space-y-8"
           >
             <div className="text-center space-y-2">
@@ -516,6 +552,8 @@ export default function App() {
                     required
                     type="date"
                     name="birthday"
+                    aria-label="Birthday"
+                    data-testid="birthday-input"
                     defaultValue={userData?.birthday}
                     className="w-full bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-[var(--accent)] transition-colors"
                   />
@@ -547,12 +585,13 @@ export default function App() {
             key="grid"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="w-full max-w-5xl flex flex-col items-center gap-16"
+            data-testid="new-tab-content"
+            className="w-full max-w-5xl flex flex-col items-center gap-10"
           >
             <div className="w-full flex flex-col items-center gap-2 relative">
-              <div className="text-center">
+              <div className="text-center" data-testid="life-counter-region">
                 <AnimatedCounter target={remainingWeeks} />
-                <div className="flex flex-col items-center gap-1.5">
+                <div className="flex flex-col items-center gap-1.25">
                   <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-500">
                     {completionPercent}% complete
                   </p>
@@ -560,49 +599,70 @@ export default function App() {
                     WEEK {lived + 1} — {getCurrentFormattedDate()}
                   </p>
 
-                  <div className="flex gap-6 mt-4">
+                  <div className="flex gap-6 mt-4" data-testid="interactive-units-region">
                     <button
                       onClick={() => handleStatClick('eat')}
-                      className={`transition-all duration-300 ${isStatActive('eat') ? 'text-white scale-125' : activeStats.size > 0 ? 'text-zinc-800 opacity-40' : 'text-zinc-400 hover:text-zinc-200'}`}
+                      className={`transition-all duration-300 ${isStatActive('eat') ? 'text-white scale-125' : activeStats.size > 0 ? 'text-zinc-500 opacity-70' : 'text-zinc-400 hover:text-zinc-200'}`}
                       title="Time spent eating so far (~6.3%)"
                     >
                       <Soup className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleStatClick('hygiene')}
-                      className={`transition-all duration-300 ${isStatActive('hygiene') ? 'text-white scale-125' : activeStats.size > 0 ? 'text-zinc-800 opacity-40' : 'text-zinc-400 hover:text-zinc-200'}`}
+                      className={`transition-all duration-300 ${isStatActive('hygiene') ? 'text-white scale-125' : activeStats.size > 0 ? 'text-zinc-500 opacity-70' : 'text-zinc-400 hover:text-zinc-200'}`}
                       title="Time spent on hygiene so far (~3.1%)"
                     >
                       <Bath className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleStatClick('sleep')}
-                      className={`transition-all duration-300 ${isStatActive('sleep') ? 'text-white scale-125' : activeStats.size > 0 ? 'text-zinc-800 opacity-40' : 'text-zinc-400 hover:text-zinc-200'}`}
+                      className={`transition-all duration-300 ${isStatActive('sleep') ? 'text-white scale-125' : activeStats.size > 0 ? 'text-zinc-500 opacity-70' : 'text-zinc-400 hover:text-zinc-200'}`}
                       title="Time spent sleeping so far (~33.3%)"
                     >
                       <Bed className="w-5 h-5" />
                     </button>
                   </div>
 
-                  <div className="h-4 mt-2">
+                  <div className="h-12 mt-2 w-full max-w-md flex items-center justify-center" data-testid="quote-region">
                     <AnimatePresence mode="wait">
-                      {hoveredWeek !== null && (
-                        <motion.p
-                          key="hover-date"
-                          initial={{ opacity: 0, y: 5 }}
+                      {showInfo ? (
+                        <motion.div
+                          key="info-text"
+                          initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -5 }}
-                          className="text-[9px] uppercase tracking-[0.2em] text-accent font-bold"
+                          exit={{ opacity: 0, y: -10 }}
+                          className="w-full text-center text-zinc-500 text-[10px] leading-relaxed space-y-1 pointer-events-none"
                         >
-                          Week {hoveredWeek + 1} • {getWeekDate(userData.birthday, hoveredWeek)}
-                        </motion.p>
+                          <p className="italic">
+                            "The average human lifespan is absurdly, insultingly brief.
+                            If you live to be eighty, you have just over four thousand weeks."
+                          </p>
+                          <p className="uppercase tracking-widest text-[8px] font-bold">
+                            — Oliver Burkeman, 4000 Weeks
+                          </p>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="daily-quote"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="w-full text-center text-zinc-500 text-[10px] leading-relaxed space-y-1 pointer-events-none"
+                        >
+                          <p className="italic font-serif tracking-wide text-zinc-400">
+                            "{dailyQuote.text}"
+                          </p>
+                          <p className="uppercase tracking-[0.3em] text-[7px] font-bold opacity-60">
+                            — {dailyQuote.author}
+                          </p>
+                        </motion.div>
                       )}
                     </AnimatePresence>
                   </div>
                 </div>
               </div>
 
-              <div className="absolute right-0 top-0 flex gap-2">
+            <div className="absolute right-0 top-0 flex gap-2">
                 <button
                   onClick={downloadJournal}
                   className="p-2 text-zinc-700 hover:text-white transition-colors"
@@ -630,46 +690,19 @@ export default function App() {
                 >
                   <Info className="w-3 h-3" />
                 </button>
-                <button
-                  onClick={resetData}
-                  className="p-2 text-zinc-700 hover:text-white transition-colors"
-                >
-                  <RefreshCcw className="w-3 h-3" />
-                </button>
               </div>
-            </div>            <div className="relative flex flex-col items-center">
+            </div>            <div className="relative flex flex-col items-center" data-testid="week-grid-region">
               <AnimatePresence mode="wait">
-                {showInfo ? (
-                  <motion.div
-                    key="info-text"
-                    initial={{ opacity: 0, y: 10 }}
+                {hoveredWeek !== null && (
+                  <motion.p
+                    key="hover-date"
+                    initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute -top-14 left-1/2 -translate-x-1/2 w-full max-w-md text-center text-zinc-500 text-[10px] leading-relaxed space-y-1 pointer-events-none"
+                    exit={{ opacity: 0, y: -5 }}
+                    className="absolute -top-9 left-1/2 -translate-x-1/2 text-[9px] uppercase tracking-[0.2em] text-accent font-bold whitespace-nowrap leading-none pointer-events-none"
                   >
-                    <p className="italic">
-                      "The average human lifespan is absurdly, insultingly brief.
-                      If you live to be eighty, you have just over four thousand weeks."
-                    </p>
-                    <p className="uppercase tracking-widest text-[8px] font-bold">
-                      — Oliver Burkeman, 4000 Weeks
-                    </p>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="daily-quote"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute -top-14 left-1/2 -translate-x-1/2 w-full max-w-md text-center text-zinc-500 text-[10px] leading-relaxed space-y-1 pointer-events-none"
-                  >
-                    <p className="italic font-serif tracking-wide text-zinc-400">
-                      "{dailyQuote.text}"
-                    </p>
-                    <p className="uppercase tracking-[0.3em] text-[7px] font-bold opacity-60">
-                      — {dailyQuote.author}
-                    </p>
-                  </motion.div>
+                    Week {hoveredWeek + 1} • {getWeekStartDate(userData.birthday, hoveredWeek)}
+                  </motion.p>
                 )}
               </AnimatePresence>
 
@@ -687,6 +720,7 @@ export default function App() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              data-testid="journal-section"
               className="fixed right-0 top-0 h-full w-full max-w-sm bg-[var(--bg)] border-l border-[var(--border)] shadow-2xl z-50 flex flex-col"
             >
               <div className="p-6 border-b border-[var(--border)] flex justify-between items-center">
@@ -739,19 +773,22 @@ export default function App() {
       </AnimatePresence>
 
       {/* Momento Vivere */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center">
-        <AnimatePresence>
-          {unlivedFeedback !== null && (
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-2 font-medium"
-            >
-              Week {unlivedFeedback} has not yet been lived.
-            </motion.p>
-          )}
-        </AnimatePresence>
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center">
+        <div className="h-5 mb-2 flex items-center justify-center">
+          <AnimatePresence mode="wait">
+            {unlivedFeedback !== null && (
+              <motion.p
+                key="unlived-feedback"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-medium"
+              >
+                Week {unlivedFeedback} has not yet been lived.
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.3 }}
@@ -760,6 +797,15 @@ export default function App() {
           Momento Vivere
         </motion.p>
       </div>
+
+      <a
+        href="https://juicedup.cargo.site/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed top-4 left-4 text-sm uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-300 transition-colors z-20"
+      >
+        MORE JUICE
+      </a>
 
       {/* Mouse Tooltip */}
       <AnimatePresence>

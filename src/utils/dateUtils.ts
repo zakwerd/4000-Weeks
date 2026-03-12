@@ -1,4 +1,4 @@
-import { differenceInWeeks, parseISO, format, addWeeks } from 'date-fns';
+import { differenceInWeeks, parseISO, format, addWeeks, addDays } from 'date-fns';
 
 export const TOTAL_WEEKS = 4000;
 
@@ -11,8 +11,15 @@ export function calculateWeeksLived(birthday: string): number {
 
 export function getWeekDate(birthday: string, weekIndex: number): string {
   const birthDate = parseISO(birthday);
-  const weekDate = addWeeks(birthDate, weekIndex);
-  return format(weekDate, 'MMM d, yyyy');
+  const weekStart = addWeeks(birthDate, weekIndex);
+  const weekEnd = addDays(weekStart, 6);
+  return `${format(weekStart, 'EEE, MMM d, yyyy')} - ${format(weekEnd, 'EEE, MMM d, yyyy')}`;
+}
+
+export function getWeekStartDate(birthday: string, weekIndex: number): string {
+  const birthDate = parseISO(birthday);
+  const weekStart = addWeeks(birthDate, weekIndex);
+  return format(weekStart, 'MMM d, yyyy');
 }
 
 export function getYearFromWeek(birthday: string, weekIndex: number): number {

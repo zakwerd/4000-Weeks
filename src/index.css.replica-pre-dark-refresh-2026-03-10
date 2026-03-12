@@ -5,13 +5,13 @@
 }
 
 :root {
-  --bg: #000000cb;
+  --bg: #050505;
   --ink: #ffffff;
-  --accent: #2e87c7;
-  --dot-empty: #282828aa;
-  --dot-filled: #6d6d6dad;
+  --accent: #ff4e00;
+  --dot-empty: #1a1a1a;
+  --dot-filled: #333333;
   --dot-highlight: #3b82f6;
-  --dot-stat: #29ff5e;
+  --dot-stat: #4ade80;
   --card-bg: rgba(24, 24, 27, 0.5);
   --border: rgba(255, 255, 255, 0.05);
   --input-bg: rgba(0, 0, 0, 0.4);
@@ -69,7 +69,6 @@ body {
     width: 6px;
     height: 6px;
   }
-
   .grid-container {
     gap: 2px;
   }
@@ -80,7 +79,6 @@ body {
     grid-template-columns: repeat(100, 1fr);
     gap: 2px;
   }
-
   .dot {
     width: 5px;
     height: 5px;
@@ -92,7 +90,6 @@ body {
     grid-template-columns: repeat(100, 1fr);
     gap: 1.5px;
   }
-
   .dot {
     width: 3px;
     height: 3px;
@@ -112,8 +109,8 @@ body {
 }
 
 .dot-current {
-  background-color: #e23b3b;
-  box-shadow: 0 0 12px #e23b3b, 0 0 24px #e23b3b;
+  background-color: var(--accent);
+  box-shadow: 0 0 15px var(--accent), 0 0 30px var(--accent);
 }
 
 .dot-highlighted {
@@ -134,16 +131,13 @@ body {
 ::-webkit-scrollbar {
   width: 4px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   border-radius: 10px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-hover);
 }
