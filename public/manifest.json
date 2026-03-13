@@ -12,7 +12,7 @@
   "chrome_url_overrides": {
     "newtab": "index.html"
   },
-  "permissions": ["storage", "unlimitedStorage"],
+  "permissions": ["storage"],
   "action": {
     "default_popup": "index.html",
     "default_icon": {

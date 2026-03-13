@@ -807,6 +807,15 @@ export default function App() {
         MORE JUICE
       </a>
 
+      <a
+        href="https://juicedup.cargo.site/privacy-policy-4000-weeks"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-4 right-4 text-[10px] uppercase tracking-[0.2em] text-zinc-500 hover:text-zinc-300 transition-colors z-20"
+      >
+        Privacy Policy
+      </a>
+
       {/* Mouse Tooltip */}
       <AnimatePresence>
         {hoveredWeek !== null && (
