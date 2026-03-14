@@ -42,13 +42,14 @@ The app already supports a non-extension mode. When `chrome.storage` is unavaila
 
 1. Push this repo to GitHub.
 2. In the repository settings, enable **GitHub Pages** and choose **GitHub Actions** as the source.
-3. Keep the repo name as `4000-weeks` or update `VITE_BASE_PATH` in:
-   [vite.config.ts](/Users/werd/Desktop/4000-weeks/vite.config.ts)
-   [.github/workflows/deploy-pages.yml](/Users/werd/Desktop/4000-weeks/.github/workflows/deploy-pages.yml)
-   [package.json](/Users/werd/Desktop/4000-weeks/package.json)
-4. Push to `main` or manually run the **Deploy Demo** workflow.
+3. Push to `main` or manually run the **Deploy Demo** workflow.
 
 The hosted demo will publish the same UI as a standard web app, using browser `localStorage` for persistence.
+
+Notes:
+- `npm run build` still creates the Chrome extension bundle in `dist`.
+- `npm run build:pages` creates the GitHub Pages demo in `dist-pages`.
+- The Pages build now uses relative asset paths, so it works without hardcoding the repository name.
 
 ## Key Extension Files
 
