@@ -20,7 +20,6 @@ Prerequisite: Node.js
 3. Enable **Developer mode**
 4. Click **Load unpacked**
 5. Select the `dist` folder:
-   `/Users/werd/Desktop/4000-weeks/dist`
 
 ## Update Extension After Changes
 
@@ -37,19 +36,6 @@ The app already supports a non-extension mode. When `chrome.storage` is unavaila
 1. Start the dev server:
    `npm run dev`
 2. Open the local URL shown by Vite.
-
-### GitHub Pages
-
-1. Push this repo to GitHub.
-2. In the repository settings, enable **GitHub Pages** and choose **GitHub Actions** as the source.
-3. Push to `main` or manually run the **Deploy Demo** workflow.
-
-The hosted demo will publish the same UI as a standard web app, using browser `localStorage` for persistence.
-
-Notes:
-- `npm run build` still creates the Chrome extension bundle in `dist`.
-- `npm run build:pages` creates the GitHub Pages demo in `dist-pages`.
-- The Pages build now uses relative asset paths, so it works without hardcoding the repository name.
 
 ## Key Extension Files
 
